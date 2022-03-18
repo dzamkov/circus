@@ -1,0 +1,8 @@
+[package]
+name = "circus"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+array-init = "2.0.0"
+ff = "0.11.0"
