@@ -1,7 +1,9 @@
 use crate::*;
 use array_init::array_init;
 
-/// Encapsulates the state of a SHA-256 hasher at a certain point in its input.
+/// Encapsulates a SHA-256 digest, or the state of a SHA-256 hasher at a certain point in its
+/// input.
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Sha256([u32; 8]);
 
 impl Sha256 {
@@ -9,9 +11,26 @@ impl Sha256 {
     pub fn new() -> Self {
         Self(H)
     }
+
+    /// Parses a digest or hasher state from a hexadecimal string.
+    pub fn from_str(str: &str) -> Option<Self> {
+        if str.len() != 64 {
+            return None;
+        }
+        Some(Self([
+            u32::from_str_radix(&str[0..8], 16).ok()?,
+            u32::from_str_radix(&str[8..16], 16).ok()?,
+            u32::from_str_radix(&str[16..24], 16).ok()?,
+            u32::from_str_radix(&str[24..32], 16).ok()?,
+            u32::from_str_radix(&str[32..40], 16).ok()?,
+            u32::from_str_radix(&str[40..48], 16).ok()?,
+            u32::from_str_radix(&str[48..56], 16).ok()?,
+            u32::from_str_radix(&str[56..64], 16).ok()?
+        ]))
+    }
 }
 
-impl std::fmt::Display for Sha256 {
+impl std::fmt::Debug for Sha256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -164,8 +183,21 @@ const K: [u32; 64] = [
 
 #[test]
 fn test_empty() {
-    let mut hasher = Sha256::new();
-    Eval.sha256_update(&mut hasher.0, [0x80000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    let mut hasher = Eval.constant(Sha256::new());
+    Eval.sha256_update(&mut hasher, [0x80000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     let target = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-    assert_eq!(format!("{}", hasher), target);
+    let target = Eval.constant(Sha256::from_str(target).unwrap());
+    assert_eq!(hasher, target);
 }
+
+/*
+#[test]
+fn test_empty_binary_emulate() {
+    let mut sys = BinaryEmulate::new(Eval);
+    let mut hasher = sys.constant(Sha256::new());
+    sys.sha256_update(&mut hasher, [0x80000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    let target = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    let target = sys.constant(Sha256::from_str(target).unwrap());
+    sys.assert_eq(hasher, target);
+}
+*/

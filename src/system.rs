@@ -62,21 +62,36 @@ pub trait SystemNot<T>: SystemRepr<T> {
     fn not(&mut self, value: &Abstract<Self, T>) -> Abstract<Self, T>;
 }
 
-/// A system which allows arbitrary boolean operations.
-pub trait BooleanSystem:
-    SystemBitAnd<bool> + SystemBitOr<bool> + SystemBitXor<bool> + SystemNot<bool>
-{
+/// A system in which abstract boolean values can be "asserted".
+pub trait SystemAssert: SystemRepr<bool> {
+    /// Asserts that the given value is true. For constraint systems, this imposes a constraint,
+    /// whereas for evaluation systems, this may panic if the assertion is false.
+    fn assert(&mut self, value: &Abstract<Self, bool>);
+}
+
+/// A system in which abstract boolean values can be "asserted".
+pub trait SystemAssertEq<T>: SystemRepr<T> {
+    /// Asserts that the given values are equal. For constraint systems, this imposes a constraint,
+    /// whereas for evaluation systems, this may panic if the assertion is false.
+    fn assert_eq(&mut self, a: &Abstract<Self, T>, b: &Abstract<Self, T>);
 }
 
 impl<S: SystemRepr<T> + ?Sized, T, const N: usize> SystemRepr<[T; N]> for S {
     type Abstract = [Abstract<S, T>; N];
     fn constant(&mut self, value: [T; N]) -> Self::Abstract {
-        todo!()
+        value.map(|v| self.constant(v))
     }
 }
 
 /// A "system" that directly evaluates values.
 pub struct Eval;
+
+impl SystemRepr<bool> for Eval {
+    type Abstract = bool;
+    fn constant(&mut self, value: bool) -> bool {
+        value
+    }
+}
 
 impl SystemRepr<u32> for Eval {
     type Abstract = u32;
@@ -167,5 +182,21 @@ where
 {
     fn not(&mut self, value: &Abstract<Self, T>) -> Abstract<Self, T> {
         !value
+    }
+}
+
+impl SystemAssert for Eval {
+    fn assert(&mut self, value: &Abstract<Self, bool>) {
+        assert!(value)
+    }
+}
+
+impl<T> SystemAssertEq<T> for Eval
+where
+    for<'a> &'a T: Eq,
+    Eval: SystemRepr<T, Abstract = T>
+{
+    fn assert_eq(&mut self, a: &Abstract<Self, T>, b: &Abstract<Self, T>) {
+        assert!(a == b)
     }
 }
